@@ -1,0 +1,19 @@
+.app {
+  height: 600px;
+  margin-top: 60px;
+}
+
+.row {
+  display: flex;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.row:nth-child(even) {
+  color: #fff;
+  background-color: #333;
+}
+
+.row:nth-child(odd) {
+  background-color: #d8d8d8;
+}
