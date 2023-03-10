@@ -5,10 +5,13 @@ type RenderComponentProps = {
   style: CSSProperties
 }
 
+type ScrollDirection = 'Vertical' | 'Horizontal'
+
 export type FixedSizeListProps = {
   children: FunctionComponent<RenderComponentProps>
   className?: string
   style?: CSSProperties
+  direction?: ScrollDirection
   itemSize: number
   itemCount: number
   width: number
@@ -18,17 +21,19 @@ export type FixedSizeListProps = {
 const overscanCount = 2
 
 const FixedSizeList: React.FC<FixedSizeListProps> = ({
+  children,
+  className,
+  style,
+  direction = 'Vertical',
   itemSize,
   itemCount,
   width,
   height,
-  className,
-  style,
-  children,
 }) => {
   const [scrollOffset, setScrollOffset] = React.useState(0)
 
   const getRangeToRender = () => {
+    const size = direction === 'Horizontal' ? width : height
     const startIndex = Math.max(
       0,
       Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize))
@@ -38,7 +43,7 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
       Math.max(
         0,
         startIndex +
-          Math.floor(height + scrollOffset - startIndex * itemSize) / itemSize
+          Math.floor(size + scrollOffset - startIndex * itemSize) / itemSize
       )
     )
     const startIndexBackward = Math.max(0, startIndex - overscanCount)
@@ -46,25 +51,33 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
     return [startIndexBackward, endIndexForward, startIndex, endIndex]
   }
 
+  const getItemStyle = (index: number) => {
+    const startOffset = index * itemSize
+    const style: CSSProperties = {
+      position: 'absolute',
+      top: direction === 'Horizontal' ? 0 : startOffset,
+      left: direction === 'Horizontal' ? startOffset : 0,
+      width: direction === 'Horizontal' ? itemSize : '100%',
+      height: direction === 'Horizontal' ? '100%' : itemSize,
+    }
+    return style
+  }
+
   const handleScroll = (e: SyntheticEvent<HTMLDivElement>) => {
-    setScrollOffset(e.currentTarget.scrollTop)
+    const { scrollTop, scrollLeft } =  e.currentTarget
+    setScrollOffset(direction === 'Horizontal' ? scrollLeft : scrollTop)
   }
 
   const [startIndex, endIndex] = getRangeToRender()
   const items = []
 
   if (itemCount > 0) {
-    for (let i = startIndex; i <= endIndex; i++) {
+    for (let index = startIndex; index <= endIndex; index++) {
       items.push(
         createElement(children, {
-          key: i,
-          index: i,
-          style: {
-            position: 'absolute',
-            top: i * itemSize,
-            width: '100%',
-            height: itemSize,
-          },
+          key: index,
+          index,
+          style: getItemStyle(index),
         })
       )
     }
@@ -82,7 +95,6 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
         overflow: 'auto',
         width,
         height,
-        WebkitOverflowScrolling: 'touch',
         willChange: 'transform',
         ...style,
       },
@@ -91,7 +103,8 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
       children: items,
       style: {
         overflow: 'hidden',
-        height: estimatedTotalSize,
+        width: direction === 'Horizontal' ? estimatedTotalSize : '100%',
+        height: direction === 'Horizontal' ? '100%' : estimatedTotalSize,
       },
     })
   )
