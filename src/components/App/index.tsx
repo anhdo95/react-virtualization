@@ -26,7 +26,7 @@ function App() {
         <h3 className={styles.heading}>Fixed Size List - Horizontal Direction</h3>
         <FixedSizeList
           className={styles.list}
-          direction="Horizontal"
+          direction="horizontal"
           itemCount={1000}
           itemSize={90}
           width={300}

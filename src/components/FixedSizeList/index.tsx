@@ -1,11 +1,18 @@
-import React, { createElement, SyntheticEvent, FunctionComponent, CSSProperties } from 'react'
+import React, {
+  createElement,
+  SyntheticEvent,
+  FunctionComponent,
+  CSSProperties,
+  useCallback,
+  useState,
+} from 'react'
 
 type RenderComponentProps = {
   index: number
   style: CSSProperties
 }
 
-type ScrollDirection = 'Vertical' | 'Horizontal'
+type ScrollDirection = 'vertical' | 'horizontal'
 
 export type FixedSizeListProps = {
   children: FunctionComponent<RenderComponentProps>
@@ -20,53 +27,63 @@ export type FixedSizeListProps = {
 
 const overscanCount = 2
 
+const ITEM_STYLE_CACHE_DEBOUNCE_INTERVAL = 200
+
 const FixedSizeList: React.FC<FixedSizeListProps> = ({
   children,
   className,
   style,
-  direction = 'Vertical',
+  direction = 'vertical',
   itemSize,
   itemCount,
   width,
   height,
 }) => {
-  const [scrollOffset, setScrollOffset] = React.useState(0)
+  const [scrollOffset, setScrollOffset] = useState(0)
+  const [itemStyleCache, setItemStyleCache] = useState<Record<number, CSSProperties>>({})
+  const [itemStyleCacheTimeoutId, setItemStyleCacheTimeoutId] = useState<NodeJS.Timeout>()
 
   const getRangeToRender = () => {
-    const size = direction === 'Horizontal' ? width : height
-    const startIndex = Math.max(
-      0,
-      Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize))
-    )
+    const size = direction === 'horizontal' ? width : height
+    const startIndex = Math.max(0, Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize)))
     const endIndex = Math.min(
       itemCount - 1,
-      Math.max(
-        0,
-        startIndex +
-          Math.floor(size + scrollOffset - startIndex * itemSize) / itemSize
-      )
+      Math.max(0, startIndex + Math.floor(size + scrollOffset - startIndex * itemSize) / itemSize)
     )
     const startIndexBackward = Math.max(0, startIndex - overscanCount)
     const endIndexForward = Math.min(itemCount - 1, endIndex + overscanCount)
     return [startIndexBackward, endIndexForward, startIndex, endIndex]
   }
 
+  // Lazily create and cache item styles while scrolling
   const getItemStyle = (index: number) => {
+    if (itemStyleCache[index]) return itemStyleCache[index]
+
     const startOffset = index * itemSize
-    const style: CSSProperties = {
+    itemStyleCache[index] = {
       position: 'absolute',
-      top: direction === 'Horizontal' ? 0 : startOffset,
-      left: direction === 'Horizontal' ? startOffset : 0,
-      width: direction === 'Horizontal' ? itemSize : '100%',
-      height: direction === 'Horizontal' ? '100%' : itemSize,
+      top: direction === 'horizontal' ? 0 : startOffset,
+      left: direction === 'horizontal' ? startOffset : 0,
+      width: direction === 'horizontal' ? itemSize : '100%',
+      height: direction === 'horizontal' ? '100%' : itemSize,
     }
-    return style
+    return itemStyleCache[index]
   }
 
   const handleScroll = (e: SyntheticEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollLeft } =  e.currentTarget
-    setScrollOffset(direction === 'Horizontal' ? scrollLeft : scrollTop)
+    const { scrollTop, scrollLeft } = e.currentTarget
+    setScrollOffset(direction === 'horizontal' ? scrollLeft : scrollTop)
+    clearItemStyleCache()
   }
+
+  const clearItemStyleCache = useCallback(() => {
+    if (itemStyleCacheTimeoutId) clearTimeout(itemStyleCacheTimeoutId)
+    setItemStyleCacheTimeoutId(
+      setTimeout(() => {
+        setItemStyleCache({})
+      }, ITEM_STYLE_CACHE_DEBOUNCE_INTERVAL)
+    )
+  }, [itemStyleCacheTimeoutId])
 
   const [startIndex, endIndex] = getRangeToRender()
   const items = []
@@ -103,8 +120,8 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
       children: items,
       style: {
         overflow: 'hidden',
-        width: direction === 'Horizontal' ? estimatedTotalSize : '100%',
-        height: direction === 'Horizontal' ? '100%' : estimatedTotalSize,
+        width: direction === 'horizontal' ? estimatedTotalSize : '100%',
+        height: direction === 'horizontal' ? '100%' : estimatedTotalSize,
       },
     })
   )
