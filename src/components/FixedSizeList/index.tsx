@@ -5,6 +5,7 @@ import React, {
   CSSProperties,
   useCallback,
   useState,
+  useEffect,
 } from 'react'
 
 type RenderComponentProps = {
@@ -43,7 +44,17 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
   const [scrollDirection, setScrollDirection] = useState<ScrollDirection>('forward')
   const [scrollOffset, setScrollOffset] = useState(0)
   const [itemStyleCache, setItemStyleCache] = useState<Record<number, CSSProperties>>({})
-  const [itemStyleCacheTimeoutId, setItemStyleCacheTimeoutId] = useState<NodeJS.Timeout>()
+  const [itemStyleCacheTimeoutId, setItemStyleCacheTimeoutId] = useState<NodeJS.Timeout | null>(
+    null
+  )
+
+  useEffect(() => {
+    return () => {
+      if (itemStyleCacheTimeoutId !== null) {
+        clearTimeout(itemStyleCacheTimeoutId)
+      }
+    }
+  }, [itemStyleCacheTimeoutId])
 
   const getStartIndexForOffset = () => {
     return Math.max(0, Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize)))
@@ -97,9 +108,13 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
   }
 
   const clearItemStyleCache = useCallback(() => {
-    if (itemStyleCacheTimeoutId) clearTimeout(itemStyleCacheTimeoutId)
+    if (itemStyleCacheTimeoutId) {
+      clearTimeout(itemStyleCacheTimeoutId)
+    }
+
     setItemStyleCacheTimeoutId(
       setTimeout(() => {
+        setItemStyleCacheTimeoutId(null)
         setItemStyleCache({})
       }, ITEM_STYLE_CACHE_DEBOUNCE_INTERVAL)
     )
