@@ -12,13 +12,14 @@ type RenderComponentProps = {
   style: CSSProperties
 }
 
-type ScrollDirection = 'vertical' | 'horizontal'
+type Direction = 'vertical' | 'horizontal'
+type ScrollDirection = 'backward' | 'forward'
 
 export type FixedSizeListProps = {
   children: FunctionComponent<RenderComponentProps>
   className?: string
   style?: CSSProperties
-  direction?: ScrollDirection
+  direction?: Direction
   itemSize: number
   itemCount: number
   width: number
@@ -39,20 +40,36 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
   width,
   height,
 }) => {
+  const [scrollDirection, setScrollDirection] = useState<ScrollDirection>('forward')
   const [scrollOffset, setScrollOffset] = useState(0)
   const [itemStyleCache, setItemStyleCache] = useState<Record<number, CSSProperties>>({})
   const [itemStyleCacheTimeoutId, setItemStyleCacheTimeoutId] = useState<NodeJS.Timeout>()
 
-  const getRangeToRender = () => {
+  const getStartIndexForOffset = () => {
+    return Math.max(0, Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize)))
+  }
+
+  const getStopIndexForStartIndex = (startIndex: number) => {
     const size = direction === 'horizontal' ? width : height
-    const startIndex = Math.max(0, Math.min(itemCount - 1, Math.floor(scrollOffset / itemSize)))
-    const endIndex = Math.min(
+    return Math.min(
       itemCount - 1,
       Math.max(0, startIndex + Math.floor(size + scrollOffset - startIndex * itemSize) / itemSize)
     )
-    const startIndexBackward = Math.max(0, startIndex - overscanCount)
-    const endIndexForward = Math.min(itemCount - 1, endIndex + overscanCount)
-    return [startIndexBackward, endIndexForward, startIndex, endIndex]
+  }
+
+  const getRangeToRender = () => {
+    const startIndex = getStartIndexForOffset()
+    const stopIndex = getStopIndexForStartIndex(startIndex)
+
+    const overscanBackward = scrollDirection === 'backward' ? Math.max(1, overscanCount) : 1
+    const overscanForward = scrollDirection === 'forward' ? Math.max(1, overscanCount) : 1
+
+    return [
+      Math.max(0, startIndex - overscanBackward),
+      Math.max(0, Math.min(itemCount - 1, stopIndex + overscanForward)),
+      startIndex,
+      stopIndex,
+    ]
   }
 
   // Lazily create and cache item styles while scrolling
@@ -72,7 +89,10 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
 
   const handleScroll = (e: SyntheticEvent<HTMLDivElement>) => {
     const { scrollTop, scrollLeft } = e.currentTarget
-    setScrollOffset(direction === 'horizontal' ? scrollLeft : scrollTop)
+    const newScrollOffset = direction === 'horizontal' ? scrollLeft : scrollTop
+
+    setScrollDirection(newScrollOffset < scrollOffset ? 'backward' : 'forward')
+    setScrollOffset(newScrollOffset)
     clearItemStyleCache()
   }
 
@@ -85,11 +105,11 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
     )
   }, [itemStyleCacheTimeoutId])
 
-  const [startIndex, endIndex] = getRangeToRender()
+  const [startIndex, stopIndex] = getRangeToRender()
   const items = []
 
   if (itemCount > 0) {
-    for (let index = startIndex; index <= endIndex; index++) {
+    for (let index = startIndex; index <= stopIndex; index++) {
       items.push(
         createElement(children, {
           key: index,
@@ -120,8 +140,8 @@ const FixedSizeList: React.FC<FixedSizeListProps> = ({
       children: items,
       style: {
         overflow: 'hidden',
-        width: direction === 'horizontal' ? estimatedTotalSize : '100%',
-        height: direction === 'horizontal' ? '100%' : estimatedTotalSize,
+        width: direction === 'horizontal' ? estimatedTotalSize : width,
+        height: direction === 'horizontal' ? height : estimatedTotalSize,
       },
     })
   )
