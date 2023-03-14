@@ -56,9 +56,9 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.75rem; 
 }
 
-.row:nth-child(odd) {
+.row.highlight {
   background-color: #d8d8d8;
 }
