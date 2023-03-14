@@ -53,7 +53,14 @@ const findNearestItemIndex = (props: Props, offset: number, instanceProps: Insta
     return findNearestItemByBinarySearch(props, offset, lastMeasuredIndex, 0, instanceProps)
   }
 
-  return findNearestItemByExponentialSearch(props, offset, instanceProps)
+  // The exponential search avoids pre-computing sizes for the full set of items as a binary search would.
+  // The overall complexity for this approach is O(log n).
+  return findNearestItemByExponentialSearch(
+    props,
+    Math.max(0, lastMeasuredIndex),
+    offset,
+    instanceProps
+  )
 }
 
 const findNearestItemByBinarySearch = (
@@ -84,23 +91,24 @@ const findNearestItemByBinarySearch = (
 
 const findNearestItemByExponentialSearch = (
   props: Props,
+  startIndex: number,
   offset: number,
   instanceProps: InstanceProps
 ) => {
   const { itemCount } = props
   let interval = 1
-  let startOffset = 0
+  let index = startIndex
 
-  while (interval < props.itemCount - 1 && startOffset < offset) {
-    startOffset = getMetadataItem(props, interval, instanceProps).offset
+  while (index < props.itemCount && getMetadataItem(props, index, instanceProps).offset < offset) {
+    index += interval
     interval *= 2
   }
 
   return findNearestItemByBinarySearch(
     props,
     offset,
-    Math.min(interval, itemCount - 1),
-    Math.floor(interval / 2),
+    Math.min(index, itemCount - 1),
+    Math.floor(index / 2),
     instanceProps
   )
 }
