@@ -32,13 +32,11 @@ type Funcs = {
   validateProps: (props: Props) => void
 }
 
-type Pop<T extends any[]> = T extends [...infer U, any] ? U : never
-
 type FuncsWithoutProps = Omit<
   {
     [K in keyof Funcs]: Funcs[K] extends (props: Props, ...args: infer P) => infer R
       ? P extends [any, ...any[]]
-        ? (...args: Pop<P>) => R
+        ? (...args: ExcludeFirstParameter<P>) => R
         : (...args: P) => R
       : never
   },

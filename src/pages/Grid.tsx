@@ -1,5 +1,4 @@
-import FixedSizeList from '../components/FixedSizeList'
-import VariableSizeList from '../components/VariableSizeList'
+import FixedSizeGrid from '../components/FixedSizeGrid'
 
 const getRandomArbitrary = (min: number, max: number) => {
   return Math.random() * (max - min) + min
@@ -17,34 +16,34 @@ function Grid() {
     <div>
       <section className="section">
         <h3 className="heading">Fixed Size Grid</h3>
-        <FixedSizeList className="list" itemCount={1000} itemSize={45} width={300} height={200}>
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Row {index}
-            </div>
-          )}
-        </FixedSizeList>
-      </section>
-
-      <section className="section">
-        <h3 className="heading">Fixed Size Grid - Horizontal Direction</h3>
-        <FixedSizeList
+        <FixedSizeGrid
           className="list"
-          direction="horizontal"
-          itemCount={1000}
-          itemSize={90}
+          rowCount={200}
+          rowHeight={75}
+          columnCount={150}
+          columnWidth={85}
           width={300}
-          height={75}
+          height={200}
         >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Column {index}
-            </div>
-          )}
-        </FixedSizeList>
+          {({ columnIndex, rowIndex, style }) => {
+            const className =
+              rowIndex % 2 === 0
+                ? columnIndex % 2 === 0
+                  ? 'row highlight'
+                  : 'row'
+                : columnIndex % 2 === 0
+                ? 'row'
+                : 'row highlight'
+            return (
+              <div className={className} style={style}>
+                {rowIndex}:{columnIndex}
+              </div>
+            )
+          }}
+        </FixedSizeGrid>
       </section>
 
-      <section className="section">
+      {/* <section className="section">
         <h3 className="heading">Variable Size Grid</h3>
         <VariableSizeList
           className="list"
@@ -59,9 +58,9 @@ function Grid() {
             </div>
           )}
         </VariableSizeList>
-      </section>
+      </section> */}
 
-      <section className="section">
+      {/* <section className="section">
         <h3 className="heading">Variable Size Grid - Horizontal Direction</h3>
         <VariableSizeList
           className="list"
@@ -78,7 +77,7 @@ function Grid() {
             </div>
           )}
         </VariableSizeList>
-      </section>
+      </section> */}
     </div>
   )
 }
