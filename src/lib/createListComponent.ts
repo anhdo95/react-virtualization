@@ -6,8 +6,8 @@ import React, {
   useCallback,
   useState,
   useEffect,
+  useMemo,
 } from 'react'
-import { unary, curry } from 'lodash-es'
 
 type RenderComponentProps = {
   index: number
@@ -18,24 +18,39 @@ type Direction = 'vertical' | 'horizontal'
 type ScrollDirection = 'backward' | 'forward'
 
 type Funcs = {
-  getItemSize: (props: Props, index: number) => number
-  getEstimatedTotalSize: (props: Props) => number
-  getStartIndexForOffset: (props: Props, offset: number) => number
-  getStopIndexForStartIndex: (props: Props, startIndex: number, offset: number) => number
+  getItemOffset: (props: Props, index: number, instanceProps: any) => number
+  getItemSize: (props: Props, index: number, instanceProps: any) => number
+  getEstimatedTotalSize: (props: Props, instanceProps: any) => number
+  getStartIndexForOffset: (props: Props, offset: number, instanceProps: any) => number
+  getStopIndexForStartIndex: (
+    props: Props,
+    startIndex: number,
+    scrollOffset: number,
+    instanceProps: any
+  ) => number
+  initInstanceProps: (props: Props) => any
+  validateProps: (props: Props) => void
 }
 
-type FuncsWithoutProps = {
-  [K in keyof Funcs]: Funcs[K] extends (props: Props, ...args: infer P) => infer R
-    ? (...args: P) => R
-    : never
-}
+type Pop<T extends any[]> = T extends [...infer U, any] ? U : never
+
+type FuncsWithoutProps = Omit<
+  {
+    [K in keyof Funcs]: Funcs[K] extends (props: Props, ...args: infer P) => infer R
+      ? P extends [any, ...any[]]
+        ? (...args: Pop<P>) => R
+        : (...args: P) => R
+      : never
+  },
+  'initInstanceProps'
+>
 
 export type Props = {
   children: FunctionComponent<RenderComponentProps>
   className?: string
   style?: CSSProperties
   direction?: Direction
-  itemSize: number
+  itemSize: number | ((index: number) => number)
   itemCount: number
   width: number
   height: number
@@ -44,24 +59,30 @@ export type Props = {
 const OVERSCAN_COUNT = 2
 const ITEM_STYLE_CACHE_DEBOUNCE_INTERVAL = 200
 
-const createListComponent = (funcs: Funcs) => {
-  const bindPropsToFuncs = (props: Props): FuncsWithoutProps => {
+const createListComponent = <P extends Props>(funcs: Funcs) => {
+  const bindPropsToFuncs = (props: Props) => {
+    const { initInstanceProps, ...remainingFuncs } = funcs
+    const instanceProps = initInstanceProps(props)
+
     const funcsWithoutProps = {} as FuncsWithoutProps
-    for (const key in funcs) {
-      const typedKey = key as keyof Funcs
-      funcsWithoutProps[typedKey] = (funcs[typedKey] as Function).bind(this, props)
+    for (const key in remainingFuncs) {
+      const typedKey = key as keyof FuncsWithoutProps
+      funcsWithoutProps[typedKey] = (...args) =>
+        (funcs[typedKey] as Function).call(this, props, ...args, instanceProps)
     }
     return funcsWithoutProps
   }
 
-  const List: React.FC<Props> = (props) => {
+  const List: React.FC<P> = (props) => {
     const { children, className, style, direction = 'vertical', itemCount, width, height } = props
     const {
+      getItemOffset,
       getItemSize,
       getEstimatedTotalSize,
       getStartIndexForOffset,
       getStopIndexForStartIndex,
-    } = bindPropsToFuncs(props)
+      validateProps,
+    } = useMemo(() => bindPropsToFuncs(props), [props])
 
     const [scrollDirection, setScrollDirection] = useState<ScrollDirection>('forward')
     const [scrollOffset, setScrollOffset] = useState(0)
@@ -69,6 +90,8 @@ const createListComponent = (funcs: Funcs) => {
     const [itemStyleCacheTimeoutId, setItemStyleCacheTimeoutId] = useState<NodeJS.Timeout | null>(
       null
     )
+
+    useEffect(() => validateProps(), [validateProps])
 
     useEffect(() => {
       return () => {
@@ -97,11 +120,10 @@ const createListComponent = (funcs: Funcs) => {
     const getItemStyle = (index: number) => {
       if (itemStyleCache[index]) return itemStyleCache[index]
 
-      const startOffset = index * getItemSize(index)
       itemStyleCache[index] = {
         position: 'absolute',
-        top: direction === 'horizontal' ? 0 : startOffset,
-        left: direction === 'horizontal' ? startOffset : 0,
+        top: direction === 'horizontal' ? 0 : getItemOffset(index),
+        left: direction === 'horizontal' ? getItemOffset(index) : 0,
         width: direction === 'horizontal' ? getItemSize(index) : '100%',
         height: direction === 'horizontal' ? '100%' : getItemSize(index),
       }
