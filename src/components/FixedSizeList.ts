@@ -1,23 +1,43 @@
-import createListComponent from '../lib/createListComponent'
+import createListComponent, { Props } from '../lib/createListComponent'
 
 const FixedSizeList = createListComponent({
-  getItemSize: ({ itemSize }) => itemSize,
+  getItemOffset: ({ itemSize }: Props, index) => index * (itemSize as number),
 
-  getEstimatedTotalSize: ({ itemCount, itemSize }) => itemCount * itemSize,
+  getItemSize: ({ itemSize }: Props) => itemSize as number,
 
-  getStartIndexForOffset: ({ itemCount, itemSize }, offset: number) =>
-    Math.max(0, Math.min(itemCount - 1, Math.floor(offset / itemSize))),
+  getEstimatedTotalSize: ({ itemCount, itemSize }: Props) => itemCount * (itemSize as number),
+
+  getStartIndexForOffset: ({ itemCount, itemSize }: Props, offset: number) =>
+    Math.max(0, Math.min(itemCount - 1, Math.floor(offset / (itemSize as number)))),
 
   getStopIndexForStartIndex: (
-    { direction, itemCount, itemSize, width, height },
+    { direction, itemCount, itemSize, width, height }: Props,
     startIndex: number,
-    offset: number
+    scrollOffset: number
   ) => {
     const size = direction === 'horizontal' ? width : height
     return Math.min(
       itemCount - 1,
-      Math.max(0, startIndex + Math.floor(size + offset - startIndex * itemSize) / itemSize)
+      Math.max(
+        0,
+        startIndex +
+          Math.floor(size + scrollOffset - startIndex * (itemSize as number)) / (itemSize as number)
+      )
     )
+  },
+
+  initInstanceProps() {},
+
+  validateProps: ({ itemSize }: Props): void => {
+    if (process.env.NODE_ENV !== 'production') {
+      if (typeof itemSize !== 'number') {
+        throw Error(
+          'An invalid "itemSize" prop has been specified. ' +
+            'Value should be a number. ' +
+            `"${itemSize === null ? 'null' : typeof itemSize}" was specified.`
+        )
+      }
+    }
   },
 })
 
