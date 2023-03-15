@@ -14,15 +14,18 @@ const variableItems = Array(1000)
 
 function List() {
   return (
-    <div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
       <section className="section">
         <h3 className="heading">Fixed Size List</h3>
         <FixedSizeList className="list" itemCount={1000} itemSize={45} width={300} height={200}>
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Row {index}
-            </div>
-          )}
+          {({ index, style }) => {
+            const className = index % 2 === 0 ? 'row highlight' : 'row'
+            return (
+              <div className={className} style={style}>
+                Row {index}
+              </div>
+            )
+          }}
         </FixedSizeList>
       </section>
 
@@ -36,11 +39,14 @@ function List() {
           width={300}
           height={75}
         >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Column {index}
-            </div>
-          )}
+          {({ index, style }) => {
+            const className = index % 2 === 0 ? 'row highlight' : 'row'
+            return (
+              <div className={className} style={style}>
+                Column {index}
+              </div>
+            )
+          }}
         </FixedSizeList>
       </section>
 
@@ -53,11 +59,14 @@ function List() {
           width={300}
           height={200}
         >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Row {index}
-            </div>
-          )}
+          {({ index, style }) => {
+            const className = index % 2 === 0 ? 'row highlight' : 'row'
+            return (
+              <div className={className} style={style}>
+                Row {index}
+              </div>
+            )
+          }}
         </VariableSizeList>
       </section>
 
@@ -72,11 +81,14 @@ function List() {
           height={75}
           estimatedItemSize={90}
         >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Column {index}
-            </div>
-          )}
+          {({ index, style }) => {
+            const className = index % 2 === 0 ? 'row highlight' : 'row'
+            return (
+              <div className={className} style={style}>
+                Column {index}
+              </div>
+            )
+          }}
         </VariableSizeList>
       </section>
     </div>
