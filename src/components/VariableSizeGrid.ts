@@ -1,16 +1,33 @@
 import createLGridComponent, { Props } from '../lib/createGridComponent'
 
 type ItemSizeGetter = (index: number) => number
+
 type VariableSizeListProps = Props & {
   rowHeight: ItemSizeGetter
   columnWidth: ItemSizeGetter
   estimatedColumnWidth?: number
   estimatedRowHeight?: number
 }
+
 type ItemMetadata = {
   offset: number
   size: number
 }
+
+type ItemProps = Omit<
+  VariableSizeListProps,
+  | 'rowHeight'
+  | 'columnWidth'
+  | 'estimatedColumnWidth'
+  | 'estimatedRowHeight'
+  | 'columnCount'
+  | 'rowCount'
+> & {
+  itemSize: ItemSizeGetter
+  itemCount: number
+  estimatedTotalSize?: number
+}
+
 type InstanceProps = {
   estimatedColumnWidth: number
   estimatedRowHeight: number
@@ -20,6 +37,12 @@ type InstanceProps = {
   rowMetadataMap: { [key in number]: ItemMetadata }
 }
 
+type ItemInstanceProps = {
+  estimatedItemSize: number
+  lastMeasuredIndex: number
+  itemMetadataMap: { [key in number]: ItemMetadata }
+}
+
 enum ItemType {
   Row = 'Row',
   Column = 'Column',
@@ -27,19 +50,65 @@ enum ItemType {
 
 const DEFAULT_ESTIMATED_ITEM_SIZE = 50
 
+const isColumnType = (itemType: ItemType) => itemType === ItemType.Column
+
+const getProps = (itemType: ItemType, props: Props): ItemProps => {
+  const {
+    columnWidth,
+    rowHeight,
+    estimatedColumnWidth,
+    estimatedRowHeight,
+    columnCount,
+    rowCount,
+    ...rest
+  } = props as VariableSizeListProps
+  return {
+    ...rest,
+    itemCount: isColumnType(itemType) ? columnCount : rowCount,
+    itemSize: isColumnType(itemType) ? columnWidth : rowHeight,
+    estimatedTotalSize: isColumnType(itemType) ? estimatedColumnWidth : estimatedRowHeight,
+  }
+}
+
+const getInstanceProps = (
+  itemType: ItemType,
+  {
+    estimatedColumnWidth,
+    estimatedRowHeight,
+    lastMeasuredColumnIndex,
+    lastMeasuredRowIndex,
+    columnMetadataMap,
+    rowMetadataMap,
+  }: InstanceProps
+): ItemInstanceProps => {
+  const isColumnType = itemType === ItemType.Column
+  return {
+    estimatedItemSize: isColumnType ? estimatedColumnWidth : estimatedRowHeight,
+    lastMeasuredIndex: isColumnType ? lastMeasuredColumnIndex : lastMeasuredRowIndex,
+    itemMetadataMap: isColumnType ? columnMetadataMap : rowMetadataMap,
+  }
+}
+
+const updateLastMeasuredIndex = (
+  itemType: ItemType,
+  index: number,
+  instanceProps: InstanceProps
+) => {
+  if (isColumnType(itemType)) {
+    instanceProps.lastMeasuredColumnIndex = index
+  } else {
+    instanceProps.lastMeasuredRowIndex = index
+  }
+}
+
 const getMetadataItem = (
   itemType: ItemType,
   props: Props,
   index: number,
   instanceProps: InstanceProps
 ) => {
-  const { columnWidth, rowHeight } = props as VariableSizeListProps
-  const itemSize = itemType === ItemType.Column ? columnWidth : rowHeight
-  const { lastMeasuredColumnIndex, lastMeasuredRowIndex, columnMetadataMap, rowMetadataMap } =
-    instanceProps
-  const lastMeasuredIndex =
-    itemType === ItemType.Column ? lastMeasuredColumnIndex : lastMeasuredRowIndex
-  const itemMetadataMap = itemType === ItemType.Column ? columnMetadataMap : rowMetadataMap
+  const { itemSize } = getProps(itemType, props)
+  const { lastMeasuredIndex, itemMetadataMap } = getInstanceProps(itemType, instanceProps)
 
   if (index > lastMeasuredIndex) {
     let offset = 0
@@ -58,11 +127,7 @@ const getMetadataItem = (
       offset += size
     }
 
-    if (itemType === ItemType.Column) {
-      instanceProps.lastMeasuredColumnIndex = index
-    } else {
-      instanceProps.lastMeasuredRowIndex = index
-    }
+    updateLastMeasuredIndex(itemType, index, instanceProps)
   }
 
   return itemMetadataMap[index]
@@ -74,9 +139,7 @@ const findNearestItemIndex = (
   offset: number,
   instanceProps: InstanceProps
 ) => {
-  const { lastMeasuredColumnIndex, lastMeasuredRowIndex } = instanceProps
-  const lastMeasuredIndex =
-    itemType === ItemType.Column ? lastMeasuredColumnIndex : lastMeasuredRowIndex
+  const { lastMeasuredIndex } = getInstanceProps(itemType, instanceProps)
   const lastMeasuredOffset =
     lastMeasuredIndex > 0
       ? getMetadataItem(itemType, props, lastMeasuredIndex, instanceProps).offset
@@ -138,7 +201,7 @@ const findNearestItemByExponentialSearch = (
   offset: number,
   instanceProps: InstanceProps
 ) => {
-  const itemCount = itemType === ItemType.Column ? props.columnCount : props.rowCount
+  const { itemCount } = getProps(itemType, props)
   let interval = 1
   let index = startIndex
 
