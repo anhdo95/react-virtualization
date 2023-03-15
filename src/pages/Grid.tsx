@@ -1,14 +1,20 @@
 import FixedSizeGrid from '../components/FixedSizeGrid'
+import VariableSizeGrid from '../components/VariableSizeGrid'
 
 const getRandomArbitrary = (min: number, max: number) => {
   return Math.random() * (max - min) + min
 }
 
-const variableItems = Array(1000)
+const rowItems = Array(500)
   .fill(true)
   .map(() => ({
-    width: getRandomArbitrary(80, 100),
-    height: getRandomArbitrary(40, 60),
+    size: getRandomArbitrary(80, 100),
+  }))
+
+const columnItems = Array(1000)
+  .fill(true)
+  .map(() => ({
+    size: getRandomArbitrary(50, 70),
   }))
 
 function Grid() {
@@ -43,41 +49,36 @@ function Grid() {
         </FixedSizeGrid>
       </section>
 
-      {/* <section className="section">
+      <section className="section">
         <h3 className="heading">Variable Size Grid</h3>
-        <VariableSizeList
+        <VariableSizeGrid
           className="list"
-          itemCount={variableItems.length}
-          itemSize={(index) => variableItems[index].height}
+          rowCount={rowItems.length}
+          rowHeight={(index) => rowItems[index].size}
+          columnCount={columnItems.length}
+          columnWidth={(index) => columnItems[index].size}
           width={300}
           height={200}
+          estimatedRowHeight={90}
+          estimatedColumnWidth={60}
         >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Row {index}
-            </div>
-          )}
-        </VariableSizeList>
-      </section> */}
-
-      {/* <section className="section">
-        <h3 className="heading">Variable Size Grid - Horizontal Direction</h3>
-        <VariableSizeList
-          className="list"
-          direction="horizontal"
-          itemCount={variableItems.length}
-          itemSize={(index) => variableItems[index].width}
-          width={300}
-          height={75}
-          estimatedItemSize={90}
-        >
-          {({ index, style }) => (
-            <div className="row" style={style}>
-              Column {index}
-            </div>
-          )}
-        </VariableSizeList>
-      </section> */}
+          {({ rowIndex, columnIndex, style }) => {
+            const className =
+              rowIndex % 2 === 0
+                ? columnIndex % 2 === 0
+                  ? 'row highlight'
+                  : 'row'
+                : columnIndex % 2 === 0
+                ? 'row'
+                : 'row highlight'
+            return (
+              <div className={className} style={style}>
+                {rowIndex}:{columnIndex}
+              </div>
+            )
+          }}
+        </VariableSizeGrid>
+      </section>
     </div>
   )
 }
